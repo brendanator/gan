@@ -93,4 +93,5 @@ ENV/
 checkpoints/
 images/
 logs/
+runs/
 MNIST-DATA/

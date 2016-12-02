@@ -62,7 +62,7 @@ with tf.Session() as session:
   tf.initialize_all_variables().run()
 
   saver = tf.train.Saver()
-  writer = tf.train.SummaryWriter(run_dirs.logs(), session.graph)
+  writer = tf.train.SummaryWriter(run_dirs.summaries(), session.graph)
 
   for iteration in range(training_iterations):
     for dstep in range(dsteps):
@@ -80,7 +80,7 @@ with tf.Session() as session:
                                {generator_input: np.random.normal(size=[batch_size, 2])})
     writer.add_summary(summary, iteration)
 
-    if iteration % 1000 == 0:
+    if iteration % 10000 == 0:
       print('Evaluation at iteration %d' % iteration)
       fake_image = session.run(tf.reshape(generator_image, [28, 28]),
                                {generator_input: np.random.normal(size=[1, 2])})
