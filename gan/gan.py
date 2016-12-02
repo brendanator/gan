@@ -12,35 +12,41 @@ run_dirs = RunDirectories()
 
 dtype = tf.float32
 batch_size = 32
+noise_size = 1
 training_iterations = 1000000
-dsteps = 1
-gsteps = 2
 
-with tf.variable_scope('generator') as scope:
-  generator_input_shape = [None, 2]
-  generator_input = tf.placeholder(dtype, generator_input_shape)
-  generator_labels = tf.placeholder(dtype, shape=[None])
-  generator_hidden_1 = layers.layer_norm(layers.relu(generator_input, 100))
-  generator_hidden_2 = layers.layer_norm(layers.fully_connected(generator_hidden_1, 100, activation_fn=tf.sigmoid))
-  generator_hidden_3 = layers.layer_norm(layers.relu(generator_hidden_2, 100))
-  generator_image = layers.fully_connected(generator_hidden_1, 784, activation_fn=tf.sigmoid)
+def generator(z):
+  with tf.variable_scope('generator') as scope:
+    hidden_1 = layers.layer_norm(layers.relu(z, 100))
+    hidden_2 = layers.layer_norm(layers.fully_connected(hidden_1, 100, activation_fn=tf.sigmoid))
+    hidden_3 = layers.layer_norm(layers.relu(hidden_2, 100))
+    generator_image = layers.fully_connected(hidden_3, 784, activation_fn=tf.sigmoid)
+  return generator_image
 
-with tf.variable_scope('discriminator') as scope:
-  discriminator_input_shape = [None, 784]
-  discriminator_input = generator_image
-  discriminator_labels = tf.placeholder(dtype, shape=[None])
-  discriminator_hidden_layer_1 = layers.layer_norm(layers.fully_connected(discriminator_input, 100, tf.nn.relu))
-  discriminator_hidden_layer_2 = layers.layer_norm(layers.fully_connected(discriminator_hidden_layer_1, 100, tf.nn.relu))
-  discriminator_logits = tf.squeeze(layers.fully_connected(discriminator_hidden_layer_2, num_outputs=1, activation_fn=None))
-  discriminator_output = tf.sigmoid(discriminator_logits)
+def discriminator(image):
+  with tf.variable_scope('discriminator') as scope:
+    hidden_layer_1 = layers.layer_norm(layers.fully_connected(image, 100, tf.nn.relu))
+    hidden_layer_2 = layers.layer_norm(layers.fully_connected(hidden_layer_1, 100, tf.nn.relu))
+    logits = tf.squeeze(layers.fully_connected(hidden_layer_2, num_outputs=1, activation_fn=None))
+  return logits, tf.sigmoid(logits)
+
+def generator_noise(batch_size):
+  return np.random.uniform(size=[batch_size, noise_size])
+
+generator_input = tf.placeholder(dtype, [None, noise_size])
+generator_labels = tf.placeholder(dtype, shape=[None])
+generator_image = generator(generator_input)
+
+discriminator_input = generator_image
+discriminator_labels = tf.placeholder(dtype, shape=[None])
+discriminator_logits, discriminator_output = discriminator(generator_image)
 
 generator_loss = tf.reduce_mean(tf.log(1 - discriminator_output))
 generator_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
 generator_train = tf.train.AdamOptimizer() \
                           .minimize(generator_loss, var_list=generator_variables)
 
-discriminator_predict = tf.round(discriminator_output)
-discriminator_accuracy = tf.reduce_mean(tf.to_float(tf.equal(discriminator_predict, discriminator_labels)))
+discriminator_accuracy = tf.reduce_mean(tf.to_float(tf.equal(tf.round(discriminator_output), discriminator_labels)))
 discriminator_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(discriminator_logits, discriminator_labels))
 discriminator_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator')
 discriminator_train = tf.train.AdamOptimizer() \
@@ -65,25 +71,26 @@ with tf.Session() as session:
   writer = tf.train.SummaryWriter(run_dirs.summaries(), session.graph)
 
   for iteration in range(training_iterations):
-    for dstep in range(dsteps):
-      fake_images = session.run(generator_image,
-                                {generator_input: np.random.normal(size=[batch_size, 2])})
+    accuracy = 0.0
+    while accuracy < 0.4:
+      fake_images = session.run(generator_image, {generator_input: generator_noise(batch_size)})
       real_images = mnist.train.images[np.random.choice(num_real_images, batch_size)]
-
       all_images = np.concatenate((fake_images, real_images))
-      _, summary = session.run([discriminator_train, discriminator_summary],
+
+      _, accuracy, summary = session.run([discriminator_train, discriminator_accuracy, discriminator_summary],
                                {discriminator_input: all_images, discriminator_labels: all_labels})
     writer.add_summary(summary, iteration)
 
-    for gstep in range(gsteps):
-      _, summary = session.run([generator_train, generator_summary],
-                               {generator_input: np.random.normal(size=[batch_size, 2])})
+    accuracy = 1.0
+    while accuracy > 0.6:
+      _, accuracy, summary = session.run([generator_train, discriminator_accuracy, generator_summary],
+                               {generator_input: generator_noise(batch_size), discriminator_labels: fake_labels})
     writer.add_summary(summary, iteration)
 
     if iteration % 10000 == 0:
       print('Evaluation at iteration %d' % iteration)
       fake_image = session.run(tf.reshape(generator_image, [28, 28]),
-                               {generator_input: np.random.normal(size=[1, 2])})
+                               {generator_input: generator_noise(1)})
 
       plt.imshow(fake_image, cmap=cm.Greys)
       plt.suptitle('iteration %d' % iteration)
