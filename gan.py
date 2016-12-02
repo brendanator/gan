@@ -1,25 +1,14 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import learn, layers
-import os
+from utils import RunDirectories
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-def next_run_directory(prefix):
-  previous_runs = [dir for dir in os.listdir('logs') if 'run' in dir]
-  if previous_runs:
-    last_run = int(previous_runs[-1][4:])
-    next_run = last_run + 1
-  else:
-    next_run = 1
-
-  dir = '%s/run-%d' % (prefix, next_run)
-  if not os.path.isdir(dir):
-    os.mkdir(dir)
-  return dir
-
 mnist = learn.datasets.load_dataset('mnist')
 num_real_images = len(mnist.train.images)
+
+run_dirs = RunDirectories()
 
 dtype = tf.float32
 batch_size = 32
@@ -31,17 +20,17 @@ with tf.variable_scope('generator') as scope:
   generator_input_shape = [None, 2]
   generator_input = tf.placeholder(dtype, generator_input_shape)
   generator_labels = tf.placeholder(dtype, shape=[None])
-  generator_hidden_1 = layers.relu(generator_input, 100)
-  generator_hidden_2 = layers.fully_connected(generator_hidden_1, 100, activation_fn=tf.sigmoid)
-  generator_hidden_3 = layers.relu(generator_hidden_2, 100)
+  generator_hidden_1 = layers.layer_norm(layers.relu(generator_input, 100))
+  generator_hidden_2 = layers.layer_norm(layers.fully_connected(generator_hidden_1, 100, activation_fn=tf.sigmoid))
+  generator_hidden_3 = layers.layer_norm(layers.relu(generator_hidden_2, 100))
   generator_image = layers.fully_connected(generator_hidden_1, 784, activation_fn=tf.sigmoid)
 
 with tf.variable_scope('discriminator') as scope:
   discriminator_input_shape = [None, 784]
   discriminator_input = generator_image
   discriminator_labels = tf.placeholder(dtype, shape=[None])
-  discriminator_hidden_layer_1 = layers.fully_connected(discriminator_input, 100, tf.nn.relu)
-  discriminator_hidden_layer_2 = layers.fully_connected(discriminator_hidden_layer_1, 100, tf.nn.relu)
+  discriminator_hidden_layer_1 = layers.layer_norm(layers.fully_connected(discriminator_input, 100, tf.nn.relu))
+  discriminator_hidden_layer_2 = layers.layer_norm(layers.fully_connected(discriminator_hidden_layer_1, 100, tf.nn.relu))
   discriminator_logits = tf.squeeze(layers.fully_connected(discriminator_hidden_layer_2, num_outputs=1, activation_fn=None))
   discriminator_output = tf.sigmoid(discriminator_logits)
 
@@ -73,7 +62,7 @@ with tf.Session() as session:
   tf.initialize_all_variables().run()
 
   saver = tf.train.Saver()
-  writer = tf.train.SummaryWriter(next_run_directory('logs'), session.graph)
+  writer = tf.train.SummaryWriter(run_dirs.logs(), session.graph)
 
   for iteration in range(training_iterations):
     for dstep in range(dsteps):
@@ -91,15 +80,15 @@ with tf.Session() as session:
                                {generator_input: np.random.normal(size=[batch_size, 2])})
     writer.add_summary(summary, iteration)
 
-    if iteration % 10000 == 0:
+    if iteration % 1000 == 0:
       print('Evaluation at iteration %d' % iteration)
       fake_image = session.run(tf.reshape(generator_image, [28, 28]),
                                {generator_input: np.random.normal(size=[1, 2])})
 
       plt.imshow(fake_image, cmap=cm.Greys)
       plt.suptitle('iteration %d' % iteration)
-      plt.savefig('%s/iteration-%d.svg' % (next_run_directory('images'), iteration))
+      plt.savefig(run_dirs.images() + 'iteration-%d.svg' % iteration)
 
-      saver.save(session, 'checkpoints/model.ckpt', global_step=iteration)
+      saver.save(session, run_dirs.checkpoints() + 'model.ckpt', global_step=iteration)
 
-saver.save(session, 'checkpoints/model.ckpt')
+saver.save(session, run_dirs.checkpoints() + 'final-model.ckpt')
