@@ -7,11 +7,12 @@ def main(_):
     batch_size = 32
     noise_size = 1
     dtype = tf.float32
-    training_iterations = 1000000
-    mnist = learn.datasets.load_dataset('mnist')
+    epochs = 1000000
+    images = learn.datasets.load_dataset('mnist').train.images
+    image_shape = [28, 28, 1]
 
-    gan = GenerativeAdversarialNetwork(mnist.train.images, batch_size, noise_size, dtype)
-    gan.train(session, training_iterations)
+    gan = GenerativeAdversarialNetwork(noise_size, image_shape, dtype)
+    gan.train(session, images, epochs, batch_size)
 
 if __name__ == '__main__':
   tf.app.run()
