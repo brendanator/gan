@@ -83,8 +83,8 @@ class GenerativeAdversarialNetwork():
                                 {self.generator_input: self.generator_noise(batch_size), self.discriminator_labels: fake_labels})
       writer.add_summary(summary, epoch)
 
-      if epoch % 10000 == 0:
-        print('Evaluation at epoch %d' % epoch)
+      if epoch % 1000 == 0:
+        print('Outputting image at epoch %d' % epoch)
         fake_image = session.run(tf.squeeze(self.generator_image), {self.generator_input: self.generator_noise(1)})
 
         plt.imshow(fake_image, cmap=cm.Greys)
