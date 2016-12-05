@@ -3,13 +3,13 @@ import os
 import shutil
 
 class RunDirectories():
-  def __init__(self, run_dir, copy_source=True):
-    self._run_dir = run_dir
+  def __init__(self, run_dirs, copy_source=True):
+    self._run_dirs = run_dirs
 
-    if os.path.isdir(run_dir):
-      previous_runs = [dir for dir in os.listdir(run_dir) if 'run-' in dir]
+    if os.path.isdir(run_dirs):
+      previous_runs = [dir for dir in os.listdir(run_dirs) if 'run-' in dir]
     else:
-      previous_runs = []
+      previous_runs = None
 
     if previous_runs:
       self._last_run = max([int(run[4:]) for run in previous_runs])
@@ -24,16 +24,16 @@ class RunDirectories():
 
   def copy_source(self):
     src_dir = os.path.dirname(os.path.abspath(__file__))
-    shutil.copytree(src_dir, self._make_run_dir('src') + os.path.relpath(src_dir))
+    shutil.copytree(src_dir, self._make_child_dir('src') + os.path.relpath(src_dir))
 
   def summaries(self):
-    return self._make_run_dir('summaries')
+    return self._make_child_dir('summaries')
 
   def images(self):
-    return self._make_run_dir('images')
+    return self._make_child_dir('images')
 
   def checkpoints(self):
-    return self._make_run_dir('checkpoints')
+    return self._make_child_dir('checkpoints')
 
   def latest_checkpoint(self, restore_run):
     if not restore_run or restore_run == 'latest':
@@ -41,10 +41,10 @@ class RunDirectories():
     else:
       run = int(restore_run)
 
-    return self._run_dir + '/run-%d/checkpoints' % run
+    return self._run_dirs + '/run-%d/checkpoints' % run
 
-  def _make_run_dir(self, child):
-    dir = self._run_dir  + '/run-%d/%s/' % (self._this_run, child)
+  def _make_child_dir(self, child):
+    dir = self._run_dirs  + '/run-%d/%s/' % (self._this_run, child)
     if not os.path.isdir(dir):
       os.makedirs(dir)
     return dir

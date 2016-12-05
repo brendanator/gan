@@ -4,13 +4,13 @@ from gan import GenerativeAdversarialNetwork
 from utils import RunDirectories
 
 flags = tf.app.flags
+flags.DEFINE_string('mode', 'train', '[train evaluate]')
 flags.DEFINE_integer('batch_size', 64, 'Batch size')
 flags.DEFINE_integer('noise_size', 2, 'Noise size')
-flags.DEFINE_integer('steps', 100000, 'Maximum training steps')
+flags.DEFINE_integer('steps', 100000, 'Maximum training steps for generator and discriminator combined')
 flags.DEFINE_float('learning_rate', 2e-4, 'Learning rate for AdamOptimizer')
 flags.DEFINE_float('beta1', 0.5, 'beta1 for AdamOptimizer')
-flags.DEFINE_string('run_dir', 'runs', 'Directory to save/load data for this run')
-flags.DEFINE_string('mode', 'train', '[train evaluate]')
+flags.DEFINE_string('run_dirs', 'runs', 'Directory to save/load data for all runs')
 flags.DEFINE_string('restore_run', None, 'Run to restore: num or latest')
 FLAGS = flags.FLAGS
 
@@ -18,7 +18,7 @@ def main(_):
   with tf.Session() as session:
     image_shape = [28, 28, 1]
     copy_source = FLAGS.mode == 'train'
-    run_dirs = RunDirectories(FLAGS.run_dir, copy_source)
+    run_dirs = RunDirectories(FLAGS.run_dirs, copy_source)
     gan = GenerativeAdversarialNetwork(FLAGS.noise_size, image_shape, tf.float32, run_dirs)
 
     if FLAGS.mode == 'train':
