@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 class GenerativeAdversarialNetwork():
-  def __init__(self, noise_size, image_shape, dtype):
+  def __init__(self, noise_size, image_shape, dtype, run_dirs):
     self.noise_size = noise_size
-    self.run_dirs = RunDirectories()
+    self.run_dirs = run_dirs
     self.build_model(image_shape, dtype)
 
   def build_model(self, image_size, dtype):
@@ -100,14 +100,14 @@ class GenerativeAdversarialNetwork():
         print('Outputting image at step %d' % output_step)
         fake_image = session.run(tf.squeeze(self.generator_image), {self.generator_input: self.generator_noise(1)})
 
+        plt.suptitle('step %d' % output_step)
         plt.imshow(fake_image, cmap=cm.Greys)
-        plt.suptitle('step %d' % step)
         plt.savefig(self.run_dirs.images() + 'step-%06d.svg' % output_step)
 
         if output_step % 1000 == 0:
           saver.save(session, self.run_dirs.checkpoints() + 'model.ckpt', global_step=output_step)
 
-    saver.save(session, self.run_dirs.checkpoints() + 'final-model.ckpt')
+    saver.save(session, self.run_dirs.checkpoints() + 'model.ckpt')
 
   def generator_noise(self, batch_size):
     return np.random.uniform(size=[batch_size, self.noise_size])
@@ -115,3 +115,16 @@ class GenerativeAdversarialNetwork():
   def random_real_images(self, images, batch_size):
     num_real_images = len(images)
     return images[np.random.choice(num_real_images, batch_size)]
+
+  def restore(self, session):
+    latest_checkpoint_dir = self.run_dirs.latest_checkpoints()
+    checkpoint = tf.train.get_checkpoint_state(latest_checkpoint_dir)
+    if checkpoint and checkpoint.model_checkpoint_path:
+      tf.train.Saver().restore(session, checkpoint.model_checkpoint_path)
+
+  def show_generated_images(self, session, num_images):
+    images = session.run(tf.squeeze(self.generator_image), {self.generator_input: self.generator_noise(num_images)})
+    for i, image in enumerate(images):
+      plt.figure(i)
+      plt.imshow(image, cmap=cm.Greys)
+    plt.show()

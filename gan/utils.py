@@ -1,16 +1,19 @@
+import tensorflow as tf
 import os
 import shutil
 
 class RunDirectories():
-  def __init__(self, copy_source=True):
-    if os.path.isdir('runs'):
-      previous_runs = [dir for dir in os.listdir('runs') if 'run-' in dir]
+  def __init__(self, run_dir, copy_source=True):
+    self._run_dir = run_dir
+
+    if os.path.isdir(run_dir):
+      previous_runs = [dir for dir in os.listdir(run_dir) if 'run-' in dir]
     else:
       previous_runs = []
 
     if previous_runs:
-      last_run = max([int(run[4:]) for run in previous_runs])
-      self._this_run = last_run + 1
+      self._last_run = max([int(run[4:]) for run in previous_runs])
+      self._this_run = self._last_run + 1
     else:
       self._this_run = 1
 
@@ -32,8 +35,11 @@ class RunDirectories():
   def checkpoints(self):
     return self._make_run_dir('checkpoints')
 
+  def latest_checkpoints(self):
+    return self._run_dir + '/run-%d/checkpoints' % self._last_run
+
   def _make_run_dir(self, child):
-    dir = 'runs/run-%d/%s/' % (self._this_run, child)
+    dir = self._run_dir  + '/run-%d/%s/' % (self._this_run, child)
     if not os.path.isdir(dir):
       os.makedirs(dir)
     return dir

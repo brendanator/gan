@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import learn
 from gan import GenerativeAdversarialNetwork
+from utils import RunDirectories
 
 flags = tf.app.flags
 flags.DEFINE_integer('batch_size', 64, 'Batch size')
@@ -8,15 +9,25 @@ flags.DEFINE_integer('noise_size', 2, 'Noise size')
 flags.DEFINE_integer('steps', 100000, 'Maximum training steps')
 flags.DEFINE_float('learning_rate', 2e-4, 'Learning rate for AdamOptimizer')
 flags.DEFINE_float('beta1', 0.5, 'beta1 for AdamOptimizer')
+flags.DEFINE_string('run_dir', 'runs', 'Directory to save/load data for this run')
+flags.DEFINE_string('mode', 'train', '[train evaluate]')
 FLAGS = flags.FLAGS
 
 def main(_):
   with tf.Session() as session:
-    images = learn.datasets.load_dataset('mnist').train.images
     image_shape = [28, 28, 1]
+    copy_source = FLAGS.mode == 'train'
+    run_dirs = RunDirectories(FLAGS.run_dir, copy_source)
+    gan = GenerativeAdversarialNetwork(FLAGS.noise_size, image_shape, tf.float32, run_dirs)
 
-    gan = GenerativeAdversarialNetwork(FLAGS.noise_size, image_shape, dtype=tf.float32)
-    gan.train(session, images, FLAGS.steps, FLAGS.batch_size, FLAGS.learning_rate, FLAGS.beta1)
+    if FLAGS.mode == 'train':
+      images = learn.datasets.load_dataset('mnist').train.images
+      gan.train(session, images, FLAGS.steps, FLAGS.batch_size, FLAGS.learning_rate, FLAGS.beta1)
+    elif FLAGS.mode == 'evaluate':
+      gan.restore(session)
+      gan.show_generated_images(session, 10)
+    else:
+      raise 'Unknown mode %s' % FLAGS.mode
 
 if __name__ == '__main__':
   tf.app.run()
