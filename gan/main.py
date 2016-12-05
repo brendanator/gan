@@ -5,7 +5,7 @@ from gan import GenerativeAdversarialNetwork
 flags = tf.app.flags
 flags.DEFINE_integer('batch_size', 64, 'Batch size')
 flags.DEFINE_integer('noise_size', 2, 'Noise size')
-flags.DEFINE_integer('epochs', 100000, 'Epochs')
+flags.DEFINE_integer('steps', 100000, 'steps')
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -14,7 +14,7 @@ def main(_):
     image_shape = [28, 28, 1]
 
     gan = GenerativeAdversarialNetwork(FLAGS.noise_size, image_shape, dtype=tf.float32)
-    gan.train(session, images, FLAGS.epochs, FLAGS.batch_size)
+    gan.train(session, images, FLAGS.steps, FLAGS.batch_size)
 
 if __name__ == '__main__':
   tf.app.run()

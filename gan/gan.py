@@ -37,7 +37,7 @@ class GenerativeAdversarialNetwork():
       logits = tf.squeeze(layers.fully_connected(hidden_layer_2, num_outputs=1, activation_fn=None))
     return logits, tf.sigmoid(logits)
 
-  def train(self, session, images, epochs, batch_size):
+  def train(self, session, images, steps, batch_size):
     generator_loss = tf.reduce_mean(tf.log(1 - self.discriminator_output))
     generator_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
     generator_train = tf.train.AdamOptimizer() \
@@ -66,32 +66,37 @@ class GenerativeAdversarialNetwork():
     real_labels = np.ones(shape=batch_size)
     all_labels = np.concatenate((fake_labels, real_labels))
 
-    for epoch in range(epochs):
-      accuracy = 0.0
-      while accuracy < 0.4:
+    step, output_step = 0, 0
+    while step < steps:
+      start_step, accuracy = step, 0.0
+      while step <= start_step+10 and accuracy < 0.4:
+        step += 1
         fake_images = session.run(self.generator_output, {self.generator_input: self.generator_noise(batch_size)})
         real_images = self.random_real_images(images, batch_size)
         all_images = np.concatenate((fake_images, real_images))
 
         _, accuracy, summary = session.run([discriminator_train, discriminator_accuracy, discriminator_summary],
                                 {self.discriminator_input: all_images, self.discriminator_labels: all_labels})
-      writer.add_summary(summary, epoch)
+      writer.add_summary(summary, step)
 
-      accuracy = 1.0
-      while accuracy > 0.6:
+      start_step, accuracy = step, 1.0
+      while step <= start_step+10 and accuracy > 0.6:
+        step += 1
         _, accuracy, summary = session.run([generator_train, discriminator_accuracy, generator_summary],
                                 {self.generator_input: self.generator_noise(batch_size), self.discriminator_labels: fake_labels})
-      writer.add_summary(summary, epoch)
+      writer.add_summary(summary, step)
 
-      if epoch % 1000 == 0:
-        print('Outputting image at epoch %d' % epoch)
+      if step >= output_step+100:
+        output_step = step - (step%100)
+        print('Outputting image at step %d' % output_step)
         fake_image = session.run(tf.squeeze(self.generator_image), {self.generator_input: self.generator_noise(1)})
 
         plt.imshow(fake_image, cmap=cm.Greys)
-        plt.suptitle('epoch %d' % epoch)
-        plt.savefig(self.run_dirs.images() + 'epoch-%d.svg' % epoch)
+        plt.suptitle('step %d' % step)
+        plt.savefig(self.run_dirs.images() + 'step-%d.svg' % output_step)
 
-        saver.save(session, self.run_dirs.checkpoints() + 'model.ckpt', global_step=epoch)
+        if output_step % 1000 == 0:
+          saver.save(session, self.run_dirs.checkpoints() + 'model.ckpt', global_step=output_step)
 
     saver.save(session, self.run_dirs.checkpoints() + 'final-model.ckpt')
 
