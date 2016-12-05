@@ -11,6 +11,7 @@ flags.DEFINE_float('learning_rate', 2e-4, 'Learning rate for AdamOptimizer')
 flags.DEFINE_float('beta1', 0.5, 'beta1 for AdamOptimizer')
 flags.DEFINE_string('run_dir', 'runs', 'Directory to save/load data for this run')
 flags.DEFINE_string('mode', 'train', '[train evaluate]')
+flags.DEFINE_string('restore_run', None, 'Run to restore: num or latest')
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -22,9 +23,9 @@ def main(_):
 
     if FLAGS.mode == 'train':
       images = learn.datasets.load_dataset('mnist').train.images
-      gan.train(session, images, FLAGS.steps, FLAGS.batch_size, FLAGS.learning_rate, FLAGS.beta1)
+      gan.train(session, images, FLAGS.steps, FLAGS.batch_size, FLAGS.learning_rate, FLAGS.beta1, FLAGS.restore_run)
     elif FLAGS.mode == 'evaluate':
-      gan.restore(session)
+      gan.restore(session, FLAGS.restore_run)
       gan.show_generated_images(session, 10)
     else:
       raise 'Unknown mode %s' % FLAGS.mode

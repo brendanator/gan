@@ -40,7 +40,7 @@ class GenerativeAdversarialNetwork():
       activations = [hidden_1, hidden_2, output]
     return logits, output, activations
 
-  def train(self, session, images, steps, batch_size, learning_rate, beta1):
+  def train(self, session, images, steps, batch_size, learning_rate, beta1, restore_run):
     generator_loss = tf.reduce_mean(tf.log(1 - self.discriminator_output))
     generator_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
     generator_optimizer = tf.train.AdamOptimizer(learning_rate, beta1)
@@ -67,6 +67,9 @@ class GenerativeAdversarialNetwork():
     discriminator_summary = tf.merge_summary([discriminator_loss_summary, discriminator_accuracy_summary] + discriminator_activation_summaries + discriminator_gradient_summaries)
 
     tf.initialize_all_variables().run()
+
+    if restore_run:
+      self.restore(session, restore_run)
 
     saver = tf.train.Saver()
     writer = tf.train.SummaryWriter(self.run_dirs.summaries(), session.graph)
@@ -116,8 +119,8 @@ class GenerativeAdversarialNetwork():
     num_real_images = len(images)
     return images[np.random.choice(num_real_images, batch_size)]
 
-  def restore(self, session):
-    latest_checkpoint_dir = self.run_dirs.latest_checkpoints()
+  def restore(self, session, restore_run):
+    latest_checkpoint_dir = self.run_dirs.latest_checkpoint(restore_run)
     checkpoint = tf.train.get_checkpoint_state(latest_checkpoint_dir)
     if checkpoint and checkpoint.model_checkpoint_path:
       tf.train.Saver().restore(session, checkpoint.model_checkpoint_path)

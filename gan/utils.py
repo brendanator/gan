@@ -35,8 +35,13 @@ class RunDirectories():
   def checkpoints(self):
     return self._make_run_dir('checkpoints')
 
-  def latest_checkpoints(self):
-    return self._run_dir + '/run-%d/checkpoints' % self._last_run
+  def latest_checkpoint(self, restore_run):
+    if not restore_run or restore_run == 'latest':
+      run = self._last_run
+    else:
+      run = int(restore_run)
+
+    return self._run_dir + '/run-%d/checkpoints' % run
 
   def _make_run_dir(self, child):
     dir = self._run_dir  + '/run-%d/%s/' % (self._this_run, child)
